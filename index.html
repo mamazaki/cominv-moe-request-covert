@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบแยกรายการคำร้องขอครุภัณฑ์ (Flatten XLSX)</title>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif, 'ChulaCharasNew';
+            background-color: #f4f6f9;
+            color: #333;
+            margin: 0;
+            padding: 40px 20px;
+            display: flex;
+            justify-content: center;
+        }
+        .container {
+            background: #ffffff;
+            max-width: 650px;
+            width: 100%;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+        h2 {
+            color: #2c3e50;
+            margin-top: 0;
+            font-size: 22px;
+            border-bottom: 2px solid #edf2f7;
+            padding-bottom: 15px;
+        }
+        .file-box {
+            border: 2px dashed #cbd5e1;
+            padding: 30px 20px;
+            text-align: center;
+            border-radius: 8px;
+            background: #f8fafc;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 20px 0;
+        }
+        .file-box:hover {
+            border-color: #3b82f6;
+            background: #eff6ff;
+        }
+        input[type="file"] {
+            display: none;
+        }
+        .btn {
+            display: inline-block;
+            width: 100%;
+            background: #3b82f6;
+            color: #fff;
+            border: none;
+            padding: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.2s;
+            box-sizing: border-box;
+        }
+        .btn:hover {
+            background: #2563eb;
+        }
+        .btn:disabled {
+            background: #cbd5e1;
+            cursor: not-allowed;
+        }
+        #status {
+            margin-top: 15px;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            display: none;
+        }
+        .success { background: #dcfce7; color: #166534; }
+        .error { background: #fee2e2; color: #991b1b; }
+        .info { background: #e0f2fe; color: #0369a1; }
+        
+        footer {
+            margin-top: 30px;
+            font-size: 11px;
+            color: #64748b;
+            text-align: center;
+            border-top: 1px solid #edf2f7;
+            padding-top: 15px;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>ระบบแปลงข้อมูลคำร้องขอครุภัณฑ์ (Flatten XLSX Data)</h2>
+    <p style="font-size: 14px; color: #64748b;">เลือกไฟล์ Excel (.xlsx) เพื่อทำการแตกรายการครุภัณฑ์ในคอลัมน์ "หมายเหตุ" ออกเป็นรายแถว โดยระบบจะทำสำเนาคอลัมน์อื่นให้อัตโนมัติ</p>
+    
+    <div class="file-box" onclick="document.getElementById('excelFile').click()">
+        <span id="file-label">📂 คลิกเพื่อเลือกไฟล์ .xlsx หรือลากไฟล์มาวางที่นี่</span>
+        <input type="file" id="excelFile" accept=".xlsx" onchange="handleFileSelect(event)">
+    </div>
+
+    <button id="processBtn" class="btn" disabled onclick="processExcel()">เริ่มแปลงและดาวน์โหลดไฟล์</button>
+    
+    <div id="status"></div>
+
+    <footer>
+        ออกแบบ และพัฒนาโดย นายสุทธิชัย ชมชื่น นักวิชาการคอมพิวเตอร์ชำนาญการ<br>
+        กลุ่มนโยบายและแผน สำนักงานศึกษาธิการจังหวัดอุดรธานี
+    </footer>
+</div>
+
+<script>
+let arrayBufferData = null;
+let selectedFileName = "";
+
+function handleFileSelect(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    selectedFileName = file.name;
+    document.getElementById('file-label').innerText = `📄 เลือกไฟล์แล้ว: ${file.name}`;
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        arrayBufferData = e.target.result;
+        document.getElementById('processBtn').disabled = false;
+        showStatus("โหลดไฟล์เข้าสู่หน่วยความจำเรียบร้อยแล้ว พร้อมประมวลผลค่ะพี่เมย์!", "info");
+    };
+    reader.readAsArrayBuffer(file);
+}
+
+function showStatus(msg, type) {
+    const statusDiv = document.getElementById('status');
+    statusDiv.className = type;
+    statusDiv.innerHTML = msg;
+    statusDiv.style.display = 'block';
+}
+
+function processExcel() {
+    if (!arrayBufferData) return;
+    
+    try {
+        // อ่านไฟล์ Excel แบบ ArrayBuffer
+        const workbook = XLSX.read(arrayBufferData, { type: 'array' });
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        
+        // แปลงเป็น Array of Arrays (AOA) เพื่อรักษาความถูกต้องของทุกลำดับคอลัมน์
+        const aoaData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+        
+        if (aoaData.length === 0) {
+            showStatus("น้ำใสตรวจไม่เจอข้อมูลในไฟล์นี้เลยค่ะ พี่เมย์เช็กไฟล์อีกทีน้า!", "error");
+            return;
+        }
+        
+        const headers = aoaData[0];
+        // ค้นหา Index ของคอลัมน์ "หมายเหตุ" แบบ Dynamic ป้องกันปัญหาตำแหน่งสลับ
+        let noteIdx = headers.indexOf("หมายเหตุ");
+        if (noteIdx === -1) {
+            // ถ้าหาไม่เจอ ให้ fallback ไปที่ Index 5 (คอลัมน์ F) ตามเดิม
+            noteIdx = 5; 
+        }
+
+        const newAoaData = [headers]; // ใส่ Header นำลงไปก่อน
+
+        // วนลูปเริ่มที่ Row index 1 (ข้าม Header row)
+        for (let i = 1; i < aoaData.length; i++) {
+            const row = aoaData[i];
+            
+            // ป้องกันดักจับกรณีข้อมูลแถวนั้นสั้นกว่าปกติหรือช่องหมายเหตุว่างเปล่า
+            let noteValue = row[noteIdx] ? String(row[noteIdx]) : '';
+            
+            if (!noteValue || !noteValue.includes('เลขครุภัณฑ์:')) {
+                newAoaData.push(row);
+                continue;
+            }
+
+            // แยกบล็อกชุดครุภัณฑ์ด้วย Regex (ใช้ Lookahead ตัดเมื่อเจอบรรทัดขึ้นต้นด้วย ตัวเลข ตามด้วย จุด และคำว่า เลขครุภัณฑ์)
+            const items = noteValue.split(/\n(?=\d+\.\s*เลขครุภัณฑ์:)/);
+            const cleanItems = [];
+            
+            items.forEach(item => {
+                const trimmed = item.trim();
+                if (trimmed.includes('เลขครุภัณฑ์:')) {
+                    cleanItems.push(trimmed);
+                }
+            });
+
+            if (cleanItems.length === 0) {
+                newAoaData.push(row);
+            } else {
+                // แตกบรรทัดใหม่ตามรายการย่อยที่พบ พร้อมสืบทอดข้อมูลคอลัมน์อื่นมาทั้งหมด
+                cleanItems.forEach(singleAsset => {
+                    const newRow = [...row]; // Shallow copy array ของแถวนั้นๆ
+                    newRow[noteIdx] = singleAsset; // แทนที่คอลัมน์หมายเหตุด้วยชิ้นที่แยกแล้ว
+                    newAoaData.push(newRow);
+                });
+            }
+        }
+
+        // สร้าง Workbook ใหม่และแปลง AOA กลับไปเป็น Sheet
+        const newWorkbook = XLSX.utils.book_new();
+        const newWorksheet = XLSX.utils.aoa_to_sheet(newAoaData);
+        
+        // กำหนดความกว้างคอลัมน์พื้นฐานเพื่อให้เปิดมาแล้วตัวหนังสือไม่ทับกันจนอึดอัด
+        newWorksheet['!cols'] = headers.map(() => ({ wch: 25 }));
+        // คอลัมน์หมายเหตุให้กว้างหน่อยเพราะข้อความค่อนข้างยาวค่ะ
+        newWorksheet['!cols'][noteIdx] = { wch: 65 };
+
+        XLSX.utils.book_append_sheet(newWorkbook, newWorksheet, "ข้อมูลแยกรายการ");
+
+        // ส่งออกเป็นไฟล์ .xlsx ชื่อเดิมพ่วงท้ายด้วย _flattened
+        const outputName = selectedFileName.replace(/\.xlsx$/i, '') + '_flattened.xlsx';
+        XLSX.writeFile(newWorkbook, outputName);
+        
+        showStatus(`✨ สำเร็จแล้วค่ะ! แยกข้อมูลกระจายออกมาเป็น <b>${newAoaData.length - 1}</b> แถวให้เรียบร้อย และดาวน์โหลดไฟล์ใหม่ชื่อ <b>${outputName}</b> ให้ลงเครื่องพี่เมย์เรียบร้อยแล้วน้าาา`, "success");
+        
+    } catch (error) {
+        console.error(error);
+        showStatus("เกิดข้อผิดพลาดในการประมวลผลไฟล์ค่ะ: " + error.message, "error");
+    }
+}
+</script>
+
+</body>
+</html>
