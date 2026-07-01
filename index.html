@@ -126,7 +126,7 @@ function handleFileSelect(event) {
     reader.onload = function(e) {
         arrayBufferData = e.target.result;
         document.getElementById('processBtn').disabled = false;
-        showStatus("โหลดไฟล์เข้าสู่หน่วยความจำเรียบร้อยแล้ว พร้อมประมวลผลค่ะพี่เมย์!", "info");
+        showStatus("โหลดไฟล์เข้าสู่หน่วยความจำเรียบร้อยแล้ว พร้อมประมวลผลค่ะ!", "info");
     };
     reader.readAsArrayBuffer(file);
 }
@@ -151,7 +151,7 @@ function processExcel() {
         const aoaData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
         
         if (aoaData.length === 0) {
-            showStatus("น้ำใสตรวจไม่เจอข้อมูลในไฟล์นี้เลยค่ะ พี่เมย์เช็กไฟล์อีกทีน้า!", "error");
+            showStatus("น้ำใสตรวจไม่เจอข้อมูลในไฟล์นี้เลยค่ะ เช็กไฟล์อีกทีน้า!", "error");
             return;
         }
         
@@ -215,7 +215,7 @@ function processExcel() {
         const outputName = selectedFileName.replace(/\.xlsx$/i, '') + '_flattened.xlsx';
         XLSX.writeFile(newWorkbook, outputName);
         
-        showStatus(`✨ สำเร็จแล้วค่ะ! แยกข้อมูลกระจายออกมาเป็น <b>${newAoaData.length - 1}</b> แถวให้เรียบร้อย และดาวน์โหลดไฟล์ใหม่ชื่อ <b>${outputName}</b> ให้ลงเครื่องพี่เมย์เรียบร้อยแล้วน้าาา`, "success");
+        showStatus(`✨ สำเร็จแล้วค่ะ! แยกข้อมูลกระจายออกมาเป็น <b>${newAoaData.length - 1}</b> แถวให้เรียบร้อย และดาวน์โหลดไฟล์ใหม่ชื่อ <b>${outputName}</b> ให้ลงเครื่องเรียบร้อยแล้วน้าาา`, "success");
         
     } catch (error) {
         console.error(error);
